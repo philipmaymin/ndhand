@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Handedness Study – Session 2</title>
+  <script src="https://unpkg.com/jspsych@7.3.4"></script>
+  <script src="https://unpkg.com/@jspsych/plugin-html-keyboard-response@1.1.3"></script>
+  <script src="https://unpkg.com/@jspsych/plugin-html-button-response@1.1.3"></script>
+  <script src="https://unpkg.com/@jspsych/plugin-survey-text@1.1.3"></script>
+  <script src="https://unpkg.com/@jspsych/plugin-survey-likert@1.1.3"></script>
+  <script src="https://unpkg.com/@jspsych/plugin-survey-multi-choice@1.1.3"></script>
+  <script src="https://unpkg.com/@jspsych/plugin-survey-html-form@1.0.3"></script>
+  <script src="https://unpkg.com/@jspsych/plugin-canvas-keyboard-response@1.1.3"></script>
+  <script src="https://unpkg.com/@jspsych/plugin-call-function@1.1.3"></script>
+  <script src="https://unpkg.com/@jspsych/plugin-fullscreen@1.2.1"></script>
+  <link href="https://unpkg.com/jspsych@7.3.4/css/jspsych.css" rel="stylesheet">
+  <script src="tasks.js"></script>
+  <style>
+    .jspsych-content { max-width: 900px; }
+    .jspsych-survey-multi-choice-question { text-align: left; }
+    .jspsych-survey-likert-statement { font-size: 15px !important; }
+  </style>
+</head>
+<body></body>
+<script>
+  var params = TASKS.getProlificParams();
+
+  var jsPsych = initJsPsych({
+    show_progress_bar: true,
+    auto_update_progress_bar: true,
+    on_finish: function () {
+      // jsPsych.data.get().localSave('csv', 'handedness_t2_' + params.prolific_pid + '.csv');
+    }
+  });
+
+  jsPsych.data.addProperties({
+    prolific_pid: params.prolific_pid,
+    study_id: params.study_id,
+    session_id: params.session_id,
+    session: "T2",
+    group: params.group
+  });
+
+  var timeline = [];
+
+  // 1. Fullscreen
+  timeline.push({
+    type: jsPsychFullscreen,
+    fullscreen_mode: true,
+    message: "<p>The experiment will switch to full screen mode when you press the button below.</p>"
+  });
+
+  // 2. Welcome
+  timeline.push(TASKS.welcome(jsPsych, "Session 2 — Follow-up Assessment"));
+
+  // 3. Edinburgh Handedness Inventory
+  timeline.push(TASKS.edinburgh(jsPsych));
+
+  // 4. Langer Mindfulness Scale
+  timeline.push(TASKS.mindfulness(jsPsych));
+
+  // 5. Visual Search Task
+  timeline = timeline.concat(TASKS.visualSearch(jsPsych));
+
+  // 6. Digit Span
+  timeline = timeline.concat(TASKS.digitSpan(jsPsych));
+
+  // 7. Remote Associates Task
+  timeline = timeline.concat(TASKS.rat(jsPsych));
+
+  // 8. Post-study questions
+  timeline = timeline.concat(TASKS.postStudy(jsPsych));
+
+  // 9. Closing
+  timeline.push({
+    type: jsPsychHtmlButtonResponse,
+    stimulus:
+      "<h2>Study Complete</h2>" +
+      "<p>Thank you for completing both sessions of the Correlates of Handedness Study!</p>" +
+      "<p>Your participation is greatly appreciated.</p>",
+    choices: ["Finish"]
+  });
+
+  // 10. Prolific completion
+  timeline.push(TASKS.prolificComplete(jsPsych));
+
+  // Exit fullscreen
+  timeline.push({
+    type: jsPsychFullscreen,
+    fullscreen_mode: false
+  });
+
+  jsPsych.run(timeline);
+</script>
+</html>
