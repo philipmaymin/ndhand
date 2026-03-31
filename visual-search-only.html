@@ -86,9 +86,9 @@
 
   // --- Drawing helpers ---
   var rotations = [0, 90, 180, 270];
-  var stimSize = 28;
-  var canvasW = 600;
-  var canvasH = 450;
+  var stimSize = Math.min(28, Math.floor(window.innerWidth / 20));
+  var canvasW = Math.min(window.innerWidth - 32, 600);
+  var canvasH = Math.round(canvasW * 0.75);
 
   function drawLetter(ctx, letter, x, y, rotation, size) {
     ctx.save();
