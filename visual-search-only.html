@@ -136,11 +136,6 @@
   function drawSearchDisplay(canvas, setSize, targetPresent) {
     var ctx = canvas.getContext("2d");
     ctx.clearRect(0, 0, canvasW, canvasH);
-    // Fixation dot
-    ctx.fillStyle = "#999";
-    ctx.beginPath();
-    ctx.arc(canvasW / 2, canvasH / 2, 3, 0, 2 * Math.PI);
-    ctx.fill();
     // Letters
     var positions = generatePositions(setSize, canvasW, canvasH, stimSize, 10);
     for (var i = 0; i < positions.length; i++) {
