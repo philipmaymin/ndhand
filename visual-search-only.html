@@ -3,85 +3,278 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Visual Search Task (standalone)</title>
+  <title>Visual Search Task</title>
   <script src="https://unpkg.com/jspsych@7.3.4"></script>
   <script src="https://unpkg.com/@jspsych/plugin-html-keyboard-response@1.1.3"></script>
   <script src="https://unpkg.com/@jspsych/plugin-html-button-response@1.1.3"></script>
-  <script src="https://unpkg.com/@jspsych/plugin-canvas-keyboard-response@1.1.3"></script>
+  <script src="https://unpkg.com/@jspsych/plugin-canvas-button-response@1.1.3"></script>
   <script src="https://unpkg.com/@jspsych/plugin-fullscreen@1.2.1"></script>
   <link href="https://unpkg.com/jspsych@7.3.4/css/jspsych.css" rel="stylesheet">
-  <script src="tasks.js"></script>
   <style>
-    #touch-buttons {
-      position: fixed;
-      bottom: 20px;
-      left: 0;
-      right: 0;
-      display: flex;
-      justify-content: center;
-      gap: 40px;
-      z-index: 9999;
-      pointer-events: none;
+    body {
+      font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+      background: #fafafa;
     }
-    #touch-buttons button {
-      pointer-events: auto;
-      font-size: 22px;
-      font-weight: bold;
-      padding: 18px 36px;
-      border: 2px solid #333;
-      border-radius: 12px;
-      background: #fff;
+    .jspsych-display-element {
+      font-size: 17px;
+      line-height: 1.5;
       color: #333;
+    }
+    .jspsych-content {
+      max-width: 560px;
+      padding: 0 20px;
+    }
+    .jspsych-content h2 {
+      font-weight: 600;
+      font-size: 24px;
+      margin-bottom: 16px;
+      color: #111;
+    }
+    .jspsych-content p { margin: 8px 0; }
+    .jspsych-btn {
+      font-family: inherit;
+      font-size: 18px !important;
+      font-weight: 600;
+      padding: 16px 32px !important;
+      margin: 8px !important;
+      border: 1.5px solid #ccc !important;
+      border-radius: 10px !important;
+      background: #fff !important;
+      color: #333 !important;
+      cursor: pointer;
+      transition: background 0.15s, border-color 0.15s;
       touch-action: manipulation;
-      user-select: none;
       -webkit-user-select: none;
+      user-select: none;
     }
-    #touch-buttons button:active {
-      background: #ddd;
+    .jspsych-btn:active {
+      background: #e8e8e8 !important;
+      border-color: #999 !important;
     }
+    .fixation { font-size: 42px; font-weight: 300; color: #999; }
+    .feedback-correct { font-size: 28px; color: #2a9d2a; font-weight: 600; }
+    .feedback-incorrect { font-size: 28px; color: #d44; font-weight: 600; }
+    .prompt-text { font-size: 13px; color: #999; margin-top: 4px; }
+    canvas { display: block; margin: 0 auto; }
+    .results { text-align: center; padding: 40px 20px; }
+    .results h2 { font-size: 22px; color: #111; margin-bottom: 20px; }
+    .results .stat { font-size: 32px; font-weight: 600; color: #222; margin: 8px 0; }
+    .results .stat-label { font-size: 14px; color: #888; margin-bottom: 16px; }
+    .results .note { font-size: 13px; color: #aaa; margin-top: 24px; line-height: 1.6; }
   </style>
 </head>
-<body>
-  <div id="touch-buttons">
-    <button id="btn-present">T Present (F)</button>
-    <button id="btn-absent">T Absent (J)</button>
-  </div>
-</body>
+<body></body>
 <script>
-  // Touch buttons simulate keyboard events so the existing plugin picks them up
-  function simKey(key) {
-    document.dispatchEvent(new KeyboardEvent("keydown", { key: key, bubbles: true }));
-    document.dispatchEvent(new KeyboardEvent("keyup", { key: key, bubbles: true }));
-  }
-  document.getElementById("btn-present").addEventListener("pointerdown", function (e) {
-    e.preventDefault();
-    simKey("f");
-  });
-  document.getElementById("btn-absent").addEventListener("pointerdown", function (e) {
-    e.preventDefault();
-    simKey("j");
-  });
+  var isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
 
   var jsPsych = initJsPsych({
     on_finish: function () {
-      document.getElementById("touch-buttons").style.display = "none";
       var data = jsPsych.data.get().filter({ task: "visual_search", practice: false });
       var acc = Math.round((data.filter({ correct: true }).count() / data.count()) * 100);
       var meanRT = Math.round(data.select("rt").mean());
       document.body.innerHTML =
-        "<div style='text-align:center; margin-top:80px; font-family:sans-serif;'>" +
-        "<h2>Done!</h2>" +
-        "<p>Accuracy: " + acc + "%</p>" +
-        "<p>Mean reaction time: " + meanRT + " ms</p>" +
-        "</div>";
+        '<div class="results">' +
+        '<h2>Test Complete</h2>' +
+        '<div class="stat">' + acc + '%</div>' +
+        '<div class="stat-label">Accuracy</div>' +
+        '<div class="stat">' + meanRT + ' ms</div>' +
+        '<div class="stat-label">Mean reaction time</div>' +
+        '<div class="note">Faster RT with high accuracy = better visual attention.</div>' +
+        '</div>';
     }
   });
 
+  // --- Drawing helpers ---
+  var rotations = [0, 90, 180, 270];
+  var stimSize = 28;
+  var canvasW = 600;
+  var canvasH = 450;
+
+  function drawLetter(ctx, letter, x, y, rotation, size) {
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate((rotation * Math.PI) / 180);
+    ctx.lineWidth = 3;
+    ctx.strokeStyle = "#333";
+    ctx.beginPath();
+    var half = size / 2;
+    if (letter === "T") {
+      ctx.moveTo(-half, -half);
+      ctx.lineTo(half, -half);
+      ctx.moveTo(0, -half);
+      ctx.lineTo(0, half);
+    } else {
+      ctx.moveTo(-half, -half);
+      ctx.lineTo(-half, half);
+      ctx.moveTo(-half, half);
+      ctx.lineTo(half, half);
+    }
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  function generatePositions(n, cW, cH, sSize, margin) {
+    var positions = [];
+    var minDist = sSize + margin;
+    var attempts = 0;
+    while (positions.length < n && attempts < 5000) {
+      var x = sSize + Math.random() * (cW - 2 * sSize);
+      var y = sSize + Math.random() * (cH - 2 * sSize);
+      var dxC = x - cW / 2, dyC = y - cH / 2;
+      if (Math.sqrt(dxC * dxC + dyC * dyC) < sSize * 1.5) { attempts++; continue; }
+      var tooClose = false;
+      for (var i = 0; i < positions.length; i++) {
+        var dx = x - positions[i][0], dy = y - positions[i][1];
+        if (Math.sqrt(dx * dx + dy * dy) < minDist) { tooClose = true; break; }
+      }
+      if (!tooClose) positions.push([x, y]);
+      attempts++;
+    }
+    return positions;
+  }
+
+  function drawSearchDisplay(canvas, setSize, targetPresent) {
+    var ctx = canvas.getContext("2d");
+    ctx.clearRect(0, 0, canvasW, canvasH);
+    // Fixation dot
+    ctx.fillStyle = "#999";
+    ctx.beginPath();
+    ctx.arc(canvasW / 2, canvasH / 2, 3, 0, 2 * Math.PI);
+    ctx.fill();
+    // Letters
+    var positions = generatePositions(setSize, canvasW, canvasH, stimSize, 10);
+    for (var i = 0; i < positions.length; i++) {
+      var letter = (i === 0 && targetPresent) ? "T" : "L";
+      var rot = rotations[Math.floor(Math.random() * rotations.length)];
+      drawLetter(ctx, letter, positions[i][0], positions[i][1], rot, stimSize);
+    }
+  }
+
+  // --- Trial definitions ---
+  var setSizes = [8, 16, 24];
+
+  var trialDefs = [];
+  setSizes.forEach(function (ss) {
+    for (var rep = 0; rep < 8; rep++) {
+      trialDefs.push({ setSize: ss, targetPresent: true });
+      trialDefs.push({ setSize: ss, targetPresent: false });
+    }
+  });
+
+  var practiceDefs = [];
+  setSizes.forEach(function (ss) {
+    practiceDefs.push({ setSize: ss, targetPresent: true });
+    practiceDefs.push({ setSize: ss, targetPresent: false });
+  });
+
+  // --- Build timeline ---
   var timeline = [];
 
-  timeline.push({ type: jsPsychFullscreen, fullscreen_mode: true });
-  timeline = timeline.concat(TASKS.visualSearch(jsPsych));
-  timeline.push({ type: jsPsychFullscreen, fullscreen_mode: false });
+  if (!isIOS) {
+    timeline.push({ type: jsPsychFullscreen, fullscreen_mode: true });
+  }
+
+  // Instructions
+  timeline.push({
+    type: jsPsychHtmlButtonResponse,
+    stimulus:
+      "<h2>Visual Attention Task</h2>" +
+      "<p>You will see a display of letters. Your job is to determine whether the letter " +
+      "<strong>T</strong> is present among the other letters.</p>" +
+      "<p>The letters will be rotated in different directions.</p>" +
+      "<p>Tap <strong>T Present</strong> if you see a T, or <strong>T Absent</strong> if you don't.</p>" +
+      "<p>Please respond as <strong>quickly and accurately</strong> as possible.</p>" +
+      "<p>There are 48 trials. The task takes about 3-4 minutes.</p>" +
+      "<p>We'll start with a few practice trials.</p>",
+    choices: ["Start Practice"]
+  });
+
+  // Build trials using canvas-button-response
+  function buildTrials(defs, isPractice) {
+    var shuffled = jsPsych.randomization.shuffle(defs);
+    var nodes = [];
+
+    shuffled.forEach(function (def) {
+      // Fixation
+      nodes.push({
+        type: jsPsychHtmlKeyboardResponse,
+        stimulus: '<div class="fixation">+</div>',
+        choices: "NO_KEYS",
+        trial_duration: 500
+      });
+
+      // Search display with buttons
+      nodes.push({
+        type: jsPsychCanvasButtonResponse,
+        canvas_size: [canvasH, canvasW],
+        stimulus: function (canvas) {
+          drawSearchDisplay(canvas, def.setSize, def.targetPresent);
+        },
+        choices: ["T Present", "T Absent"],
+        prompt: '<p class="prompt-text">Is the letter T present?</p>',
+        data: {
+          task: "visual_search",
+          practice: isPractice,
+          target_present: def.targetPresent,
+          set_size: def.setSize
+        },
+        on_finish: function (data) {
+          // response 0 = "T Present", 1 = "T Absent"
+          data.correct = def.targetPresent
+            ? data.response === 0
+            : data.response === 1;
+        }
+      });
+
+      // Feedback (practice only)
+      if (isPractice) {
+        nodes.push({
+          type: jsPsychHtmlKeyboardResponse,
+          stimulus: function () {
+            var last = jsPsych.data.getLastTrialData().values()[0];
+            return last.correct
+              ? '<p class="feedback-correct">Correct</p>'
+              : '<p class="feedback-incorrect">Incorrect</p>';
+          },
+          choices: "NO_KEYS",
+          trial_duration: 600
+        });
+      }
+    });
+
+    return nodes;
+  }
+
+  // Practice
+  timeline = timeline.concat(buildTrials(practiceDefs, true));
+
+  // Transition
+  timeline.push({
+    type: jsPsychHtmlButtonResponse,
+    stimulus:
+      "<h2>Practice Complete</h2>" +
+      "<p>Now the real trials will begin.</p>" +
+      "<p>Respond as quickly and accurately as you can.</p>",
+    choices: ["Start Test"]
+  });
+
+  // Test
+  timeline = timeline.concat(buildTrials(trialDefs, false));
+
+  // Summary
+  timeline.push({
+    type: jsPsychHtmlButtonResponse,
+    stimulus: function () {
+      var data = jsPsych.data.get().filter({ task: "visual_search", practice: false });
+      var acc = Math.round((data.filter({ correct: true }).count() / data.count()) * 100);
+      return "<h2>Test Complete</h2><p>Accuracy: " + acc + "%</p><p>Thank you.</p>";
+    },
+    choices: ["Finish"]
+  });
+
+  if (!isIOS) {
+    timeline.push({ type: jsPsychFullscreen, fullscreen_mode: false });
+  }
 
   jsPsych.run(timeline);
 </script>
