@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Visual Search Task (standalone)</title>
+  <script src="https://unpkg.com/jspsych@7.3.4"></script>
+  <script src="https://unpkg.com/@jspsych/plugin-html-keyboard-response@1.1.3"></script>
+  <script src="https://unpkg.com/@jspsych/plugin-html-button-response@1.1.3"></script>
+  <script src="https://unpkg.com/@jspsych/plugin-canvas-keyboard-response@1.1.3"></script>
+  <script src="https://unpkg.com/@jspsych/plugin-fullscreen@1.2.1"></script>
+  <link href="https://unpkg.com/jspsych@7.3.4/css/jspsych.css" rel="stylesheet">
+  <script src="tasks.js"></script>
+  <style>
+    #touch-buttons {
+      position: fixed;
+      bottom: 20px;
+      left: 0;
+      right: 0;
+      display: flex;
+      justify-content: center;
+      gap: 40px;
+      z-index: 9999;
+      pointer-events: none;
+    }
+    #touch-buttons button {
+      pointer-events: auto;
+      font-size: 22px;
+      font-weight: bold;
+      padding: 18px 36px;
+      border: 2px solid #333;
+      border-radius: 12px;
+      background: #fff;
+      color: #333;
+      touch-action: manipulation;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+    #touch-buttons button:active {
+      background: #ddd;
+    }
+  </style>
+</head>
+<body>
+  <div id="touch-buttons">
+    <button id="btn-present">T Present (F)</button>
+    <button id="btn-absent">T Absent (J)</button>
+  </div>
+</body>
+<script>
+  // Touch buttons simulate keyboard events so the existing plugin picks them up
+  function simKey(key) {
+    document.dispatchEvent(new KeyboardEvent("keydown", { key: key, bubbles: true }));
+    document.dispatchEvent(new KeyboardEvent("keyup", { key: key, bubbles: true }));
+  }
+  document.getElementById("btn-present").addEventListener("pointerdown", function (e) {
+    e.preventDefault();
+    simKey("f");
+  });
+  document.getElementById("btn-absent").addEventListener("pointerdown", function (e) {
+    e.preventDefault();
+    simKey("j");
+  });
+
+  var jsPsych = initJsPsych({
+    on_finish: function () {
+      document.getElementById("touch-buttons").style.display = "none";
+      var data = jsPsych.data.get().filter({ task: "visual_search", practice: false });
+      var acc = Math.round((data.filter({ correct: true }).count() / data.count()) * 100);
+      var meanRT = Math.round(data.select("rt").mean());
+      document.body.innerHTML =
+        "<div style='text-align:center; margin-top:80px; font-family:sans-serif;'>" +
+        "<h2>Done!</h2>" +
+        "<p>Accuracy: " + acc + "%</p>" +
+        "<p>Mean reaction time: " + meanRT + " ms</p>" +
+        "</div>";
+    }
+  });
+
+  var timeline = [];
+
+  timeline.push({ type: jsPsychFullscreen, fullscreen_mode: true });
+  timeline = timeline.concat(TASKS.visualSearch(jsPsych));
+  timeline.push({ type: jsPsychFullscreen, fullscreen_mode: false });
+
+  jsPsych.run(timeline);
+</script>
+</html>

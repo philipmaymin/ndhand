@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Visual Acuity Test</title>
+  <script src="https://unpkg.com/jspsych@7.3.4"></script>
+  <script src="https://unpkg.com/@jspsych/plugin-html-keyboard-response@1.1.3"></script>
+  <script src="https://unpkg.com/@jspsych/plugin-html-button-response@1.1.3"></script>
+  <script src="https://unpkg.com/@jspsych/plugin-canvas-button-response@1.1.3"></script>
+  <script src="https://unpkg.com/@jspsych/plugin-fullscreen@1.2.1"></script>
+  <link href="https://unpkg.com/jspsych@7.3.4/css/jspsych.css" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+      background: #fafafa;
+    }
+    .jspsych-display-element {
+      font-size: 17px;
+      line-height: 1.5;
+      color: #333;
+    }
+    .jspsych-content {
+      max-width: 560px;
+      padding: 0 20px;
+    }
+    .jspsych-content h2 {
+      font-weight: 600;
+      font-size: 24px;
+      margin-bottom: 16px;
+      color: #111;
+    }
+    .jspsych-content p {
+      margin: 8px 0;
+    }
+    /* General buttons */
+    .jspsych-btn {
+      font-family: inherit;
+      font-size: 17px !important;
+      font-weight: 500;
+      padding: 12px 28px !important;
+      margin: 6px !important;
+      border: 1.5px solid #ccc !important;
+      border-radius: 10px !important;
+      background: #fff !important;
+      color: #333 !important;
+      cursor: pointer;
+      transition: background 0.15s, border-color 0.15s;
+      min-width: 60px;
+    }
+    .jspsych-btn:active {
+      background: #e8e8e8 !important;
+      border-color: #999 !important;
+    }
+    /* Arrow-pad layout for E direction buttons */
+    #jspsych-canvas-button-response-btngroup {
+      display: grid !important;
+      grid-template-columns: 72px 72px 72px;
+      grid-template-rows: auto auto auto auto;
+      justify-content: center;
+      justify-items: center;
+      gap: 6px;
+      margin-top: 8px;
+    }
+    #jspsych-canvas-button-response-btngroup .jspsych-btn {
+      padding: 8px !important;
+      width: 66px;
+      height: 66px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 12px !important;
+    }
+    #jspsych-canvas-button-response-button-0 { grid-column: 2; grid-row: 1; }
+    #jspsych-canvas-button-response-button-1 { grid-column: 1; grid-row: 2; }
+    #jspsych-canvas-button-response-button-2 { grid-column: 3; grid-row: 2; }
+    #jspsych-canvas-button-response-button-3 { grid-column: 2; grid-row: 3; }
+    #jspsych-canvas-button-response-button-4 {
+      grid-column: 1 / 4;
+      grid-row: 4;
+      margin-top: 4px;
+    }
+    #jspsych-canvas-button-response-button-4 .jspsych-btn {
+      width: auto;
+      height: auto;
+      padding: 10px 24px !important;
+      font-size: 15px !important;
+      color: #888 !important;
+      border-color: #ddd !important;
+    }
+    /* Fixation cross */
+    .fixation {
+      font-size: 42px;
+      font-weight: 300;
+      color: #999;
+    }
+    /* Feedback */
+    .feedback-correct { font-size: 28px; color: #2a9d2a; font-weight: 600; }
+    .feedback-incorrect { font-size: 28px; color: #d44; font-weight: 600; }
+    /* Canvas */
+    canvas { display: block; margin: 0 auto; }
+    /* Prompt text */
+    .prompt-text { font-size: 13px; color: #999; margin-top: 4px; }
+    /* Results page */
+    .results { text-align: center; padding: 40px 20px; }
+    .results h2 { font-size: 22px; color: #111; margin-bottom: 20px; }
+    .results .stat { font-size: 32px; font-weight: 600; color: #222; margin: 8px 0; }
+    .results .stat-label { font-size: 14px; color: #888; margin-bottom: 16px; }
+    .results .note { font-size: 13px; color: #aaa; margin-top: 24px; line-height: 1.6; }
+  </style>
+</head>
+<body></body>
+<script>
+  // Skip fullscreen on iOS (not supported)
+  var isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+
+  var jsPsych = initJsPsych({
+    on_finish: function () {
+      var data = jsPsych.data.get().filter({ task: "acuity", practice: false });
+      var reversals = data.filter({ reversal: true });
+      var thresholds = reversals.select("size").values;
+      var last = thresholds.slice(Math.max(0, thresholds.length - 6));
+      var threshold = last.length > 0
+        ? Math.round(last.reduce(function(a,b){ return a+b; }, 0) / last.length * 10) / 10
+        : "N/A";
+      var acc = Math.round((data.filter({ correct: true }).count() / data.count()) * 100);
+      document.body.innerHTML =
+        '<div class="results">' +
+        '<h2>Test Complete</h2>' +
+        '<div class="stat">' + threshold + ' px</div>' +
+        '<div class="stat-label">Acuity threshold</div>' +
+        '<div class="stat">' + acc + '%</div>' +
+        '<div class="stat-label">Accuracy</div>' +
+        '<div class="note">Lower threshold = better acuity.<br>' +
+        'Use the same device and distance next time for a valid comparison.</div>' +
+        '</div>';
+    }
+  });
+
+  var directions = [
+    { angle: 0,   key: "right" },
+    { angle: 180, key: "left"  },
+    { angle: 270, key: "up"    },
+    { angle: 90,  key: "down"  }
+  ];
+  var choiceMap = ["up", "left", "right", "down", "cant_tell"];
+
+  function makeEIcon(angle) {
+    var sz = 28;
+    var c = document.createElement("canvas");
+    c.width = 48; c.height = 48;
+    var ctx = c.getContext("2d");
+    ctx.translate(24, 24);
+    ctx.rotate(angle * Math.PI / 180);
+    var unit = sz / 5;
+    var hw = sz / 2;
+    ctx.fillStyle = "#333";
+    ctx.fillRect(-hw, -hw, unit, sz);
+    ctx.fillRect(-hw, -hw, sz, unit);
+    ctx.fillRect(-hw, -unit/2, sz, unit);
+    ctx.fillRect(-hw, hw - unit, sz, unit);
+    return c.toDataURL();
+  }
+
+  var btnLeft  = '<img src="' + makeEIcon(180) + '" width="44" height="44">';
+  var btnUp    = '<img src="' + makeEIcon(270) + '" width="44" height="44">';
+  var btnRight = '<img src="' + makeEIcon(0)   + '" width="44" height="44">';
+  var btnDown  = '<img src="' + makeEIcon(90)  + '" width="44" height="44">';
+
+  var choiceLabels = [btnUp, btnLeft, btnRight, btnDown, "Can't tell"];
+
+  function drawE(canvas, size, angle) {
+    var ctx = canvas.getContext("2d");
+    var w = canvas.width, h = canvas.height;
+    ctx.clearRect(0, 0, w, h);
+    ctx.save();
+    ctx.translate(w / 2, h / 2);
+    ctx.rotate(angle * Math.PI / 180);
+    // Use a 5x5 grid: stroke = 1 unit, gap = 1 unit
+    // So E fits in 5 units wide x 5 units tall
+    var unit = size / 5;
+    var hw = size / 2;  // half-width
+    ctx.fillStyle = "#222";
+    // Vertical spine (left side, full height)
+    ctx.fillRect(-hw, -hw, unit, size);
+    // Top prong
+    ctx.fillRect(-hw, -hw, size, unit);
+    // Middle prong
+    ctx.fillRect(-hw, -unit / 2, size, unit);
+    // Bottom prong
+    ctx.fillRect(-hw, hw - unit, size, unit);
+    ctx.restore();
+  }
+
+  function pickDir() {
+    return directions[Math.floor(Math.random() * directions.length)];
+  }
+
+  var staircase = {
+    size: 80, min: 10, max: 160, step: 1.3,
+    maxTrials: 40, maxReversals: 10,
+    trialCount: 0, reversalCount: 0,
+    lastDirection: null, correctStreak: 0
+  };
+
+  var curDir = pickDir();
+  var timeline = [];
+
+  // Fullscreen (skip on iOS)
+  if (!isIOS) {
+    timeline.push({ type: jsPsychFullscreen, fullscreen_mode: true });
+  }
+
+  // Instructions
+  timeline.push({
+    type: jsPsychHtmlButtonResponse,
+    stimulus:
+      "<h2>Visual Acuity Test</h2>" +
+      "<p>You will see the letter <strong>E</strong> pointing in one of four directions.</p>" +
+      "<p>Tap the button that matches the direction the E is pointing. " +
+      "If you can't tell, tap <strong>Can't tell</strong>.</p>" +
+      "<p>The E will get smaller as you answer correctly and larger when you make a mistake.</p>" +
+      "<p>There is no time limit. Take as long as you need. The test takes about 2 minutes.</p>" +
+      "<p style='margin-top:16px'><strong>Important:</strong> Sit at a comfortable arm's length from your screen. " +
+      "Use the same device and distance if you take this test again later.</p>",
+    choices: ["Start Practice"]
+  });
+
+  // Practice
+  var practiceSizes = [80, 60, 40, 25];
+  for (var p = 0; p < practiceSizes.length; p++) {
+    (function(pSize) {
+      var pDir;
+      timeline.push({
+        type: jsPsychHtmlKeyboardResponse,
+        stimulus: '<div class="fixation">+</div>',
+        choices: "NO_KEYS",
+        trial_duration: 500,
+        on_start: function() { pDir = pickDir(); }
+      });
+      timeline.push({
+        type: jsPsychCanvasButtonResponse,
+        canvas_size: [280, 280],
+        stimulus: function(canvas) { drawE(canvas, pSize, pDir.angle); },
+        choices: choiceLabels,
+        prompt: '<p class="prompt-text">Which direction is the E pointing?</p>',
+        data: { task: "acuity", practice: true },
+        on_finish: function(data) {
+          var chosen = choiceMap[data.response];
+          data.correct = chosen === pDir.key;
+          data.direction = pDir.key;
+          data.chosen = chosen;
+          data.size = pSize;
+        }
+      });
+      timeline.push({
+        type: jsPsychHtmlKeyboardResponse,
+        stimulus: function() {
+          var last = jsPsych.data.getLastTrialData().values()[0];
+          return last.correct
+            ? '<p class="feedback-correct">Correct</p>'
+            : '<p class="feedback-incorrect">Incorrect</p>';
+        },
+        choices: "NO_KEYS",
+        trial_duration: 600
+      });
+    })(practiceSizes[p]);
+  }
+
+  // Transition
+  timeline.push({
+    type: jsPsychHtmlButtonResponse,
+    stimulus:
+      "<h2>Practice Complete</h2>" +
+      "<p>Now the real test will begin.</p>" +
+      "<p>The E will get smaller as you answer correctly. " +
+      "Just do your best. If you can't tell, tap <strong>Can't tell</strong>.</p>" +
+      "<p>There is no time limit. Take as long as you need.</p>",
+    choices: ["Start Test"]
+  });
+
+  // Test staircase
+  var testTrial = {
+    timeline: [
+      {
+        type: jsPsychHtmlKeyboardResponse,
+        stimulus: '<div class="fixation">+</div>',
+        choices: "NO_KEYS",
+        trial_duration: 500,
+        on_start: function() { curDir = pickDir(); }
+      },
+      {
+        type: jsPsychCanvasButtonResponse,
+        canvas_size: [280, 280],
+        stimulus: function(canvas) {
+          drawE(canvas, staircase.size, curDir.angle);
+        },
+        choices: choiceLabels,
+        prompt: '<p class="prompt-text">Which direction is the E pointing?</p>',
+        data: { task: "acuity", practice: false },
+        on_finish: function(data) {
+          var chosen = choiceMap[data.response];
+          var wasCorrect = chosen === curDir.key;
+          data.correct = wasCorrect;
+          data.direction = curDir.key;
+          data.chosen = chosen;
+          data.size = staircase.size;
+          data.reversal = false;
+
+          if (wasCorrect) {
+            staircase.correctStreak++;
+            if (staircase.correctStreak >= 2) {
+              if (staircase.lastDirection === "up") {
+                staircase.reversalCount++;
+                data.reversal = true;
+              }
+              staircase.lastDirection = "down";
+              staircase.size = Math.max(staircase.min, staircase.size / staircase.step);
+              staircase.correctStreak = 0;
+            }
+          } else {
+            staircase.correctStreak = 0;
+            if (staircase.lastDirection === "down") {
+              staircase.reversalCount++;
+              data.reversal = true;
+            }
+            staircase.lastDirection = "up";
+            staircase.size = Math.min(staircase.max, staircase.size * staircase.step);
+          }
+
+          staircase.trialCount++;
+        }
+      }
+    ],
+    loop_function: function() {
+      return staircase.trialCount < staircase.maxTrials &&
+             staircase.reversalCount < staircase.maxReversals;
+    }
+  };
+
+  timeline.push(testTrial);
+
+  timeline.push({
+    type: jsPsychHtmlButtonResponse,
+    stimulus: function() {
+      var data = jsPsych.data.get().filter({ task: "acuity", practice: false });
+      var acc = Math.round((data.filter({ correct: true }).count() / data.count()) * 100);
+      return "<h2>Test Complete</h2><p>Accuracy: " + acc + "%</p><p>Thank you.</p>";
+    },
+    choices: ["Finish"]
+  });
+
+  if (!isIOS) {
+    timeline.push({ type: jsPsychFullscreen, fullscreen_mode: false });
+  }
+
+  jsPsych.run(timeline);
+</script>
+</html>

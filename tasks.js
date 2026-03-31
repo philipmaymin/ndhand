@@ -96,10 +96,12 @@ TASKS.consent = function (jsPsych) {
       "of approximately 35–45 minutes each, and 6 days of daily activities of approximately 10–15 minutes per day.</p>" +
       "<p><strong>Session 1</strong> (today): You will complete questions about your demographics, musical background, " +
       "hand preference, and level of mindfulness, as well as tasks related to visual attention, memory, and creativity. " +
-      "You may skip any questions you do not want to answer. You will then be given instructions for a daily activity " +
-      "involving your hands over the next week.</p>" +
-      "<p><strong>Days 1–6:</strong> You will complete approximately 10 minutes of typing per day while following " +
-      "your assigned instructions, plus a brief daily survey.</p>" +
+      "You may skip any questions you do not want to answer. You will then be randomly assigned to one of several groups " +
+      "and given instructions for a daily activity over the next week. Depending on your group, you may be asked to pay " +
+      "attention to how you use one of your hands, or you may simply complete the activity with no special instructions.</p>" +
+      "<p><strong>Days 1-6:</strong> Each day you will copy-type a short passage (~125 words) and respond to a brief " +
+      "creative writing prompt (~125 words), while following any instructions for your group. You will also complete " +
+      "a short daily diary. This takes approximately 10-15 minutes per day.</p>" +
       "<p><strong>Session 2</strong> (after ~1 week): You will complete the same assessments as Session 1, " +
       "without demographic questions, plus a few questions about your experience.</p>" +
       "<h3>Risks and Benefits</h3>" +
